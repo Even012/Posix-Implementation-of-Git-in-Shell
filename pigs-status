@@ -1,0 +1,81 @@
+#! /bin/dash
+
+if [ ! "$#" -eq 0 ]; then 
+    echo "usage: pigs-status" >&2
+    exit 1
+fi
+
+. pigs-config
+touch 'status.txt'
+
+# the latest commit version
+i=0
+while [ -d "$branch/commit/$i" ] 2>/dev/null; do
+    i=$((i+1))
+done   
+
+print_status() {
+    status1=$(diff "$branch/index/$1" "$branch/commit/$((i-1))/$1" >/dev/null 2>&1; echo "$?")
+    status2=$(diff "$branch/index/$1" "$1" >/dev/null 2>&1; echo "$?")
+    # status=$(diff "$1" "$branch/commit/$((i-1))/$1">/dev/null 2>&1; echo "$?")
+    # never add it ==== untracked
+    if [ ! -e "$branch/index/$1" ] && [ -e "$1" ] ; then
+        if [ -e "$branch/commit/$((i-1))/$1" ]; then
+            echo "$1 - deleted from index" >> 'status.txt'
+        else
+            echo "$1 - untracked" >> 'status.txt'
+        fi
+    # if tracked:
+    elif [ ! -e "$branch/commit/$((i-1))/$1" ]; then
+        if [ "$status2" -eq 0 ]; then
+            echo "$1 - added to index" >> 'status.txt'
+        elif [ "$status2" -eq 1 ]; then
+            echo "$1 - added to index, file changed" >> 'status.txt'
+        elif [ "$status2" -eq 2 ]; then
+            echo "$1 - added to index, file deleted" >> 'status.txt'
+        fi
+    elif [ ! -e "$1" ] && [ ! -e "$branch/index/$1" ]; then
+        echo "$1 - file deleted, deleted from index" >> 'status.txt'
+    elif [ "$status1" -eq 0 ] && [ "$status2" -eq 0 ]; then
+        echo "$1 - same as repo" >> 'status.txt'
+    elif [ -e "$branch/commit/$((i-1))/$1" ] && [ -e "$branch/index/$1" ]; then
+        if [ ! -e "$1" ]; then
+            echo "$1 - file deleted" >> 'status.txt'
+        elif [ "$status1" -eq 0 ] && [ "$status2" -eq 1 ]; then
+            echo "$1 - file changed, changes not staged for commit" >> 'status.txt'
+        elif [ "$status1" -eq 1 ] && [ "$status2" -eq 0 ]; then
+            echo "$1 - file changed, changes staged for commit" >> 'status.txt'
+        elif [ "$status1" -eq 1 ] && [ "$status2" -eq 1 ]; then
+            echo "$1 - file changed, different changes staged for commit" >> 'status.txt'
+        fi
+    fi
+}
+
+
+
+for file in *; do
+    if [ ! "$file" = 'status.txt' ] && [ ! "$file" = '*' ]; then
+        print_status "$file"
+        # echo $file
+    fi
+done
+
+
+for file in "$branch"/index/*; do
+    file=$(echo "$file" | sed 's/.*\/\([^/]*\)$/\1/')
+    if [ ! -e "$file" ] && [ ! "$file" = 'status.txt' ] && [ ! "$file" = '*' ]; then
+        print_status "$file"
+        # echo $file
+    fi
+done
+
+for file in "$branch/commit/$((i-1))"/*; do
+    file=$(echo "$file" | sed 's/.*\/\([^/]*\)$/\1/')
+    if [ ! -e "$file" ] && [ ! -e "$branch/index/$file" ] && [ ! "$file" = 'status.txt' ] && [ ! "$file" = '*' ]; then
+        print_status "$file"
+    fi
+done
+
+sort 'status.txt'   
+rm 'status.txt'
+

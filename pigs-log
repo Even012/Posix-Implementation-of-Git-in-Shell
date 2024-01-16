@@ -1,0 +1,15 @@
+#! /bin/dash
+. pigs-config
+
+if [ ! -d .pig ]; then
+    echo 'pigs-log: error: pigs repository directory .pig not found' >&2
+    exit 1
+fi
+
+if [ ! "$#" -eq 0 ]
+then
+    echo "usage: pigs-log" >&2
+    exit 1
+fi
+
+tac "$branch/log" 2>/dev/null

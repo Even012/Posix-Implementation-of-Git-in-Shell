@@ -1,0 +1,51 @@
+#! /bin/dash
+. pigs-config
+
+if [ ! "$#" -eq 1 ]; then
+    echo "usage"
+elif [ ! -d ".pig/branches/$1" ]; then
+    echo "$0: error: unknown branch 'non-existent-branch'"
+else
+    echo "Switched to branch '$1'"
+    
+    # save all changes before checkout (content change / delete)
+    for file in *; do
+        cp "$file" "$branch/$file"
+    done
+    for file in "$branch"/*; do
+        workingfile=$(echo "$file" | cut -d'/' -f4)
+        if [ ! -e "$workingfile" ] ; then
+            rm "$file" 2>/dev/null
+        fi
+    done
+    # for file in "$branch"/pigs-*; do
+    #     rm "$file"
+    # done
+
+    # cope the later branch here before checkout
+    # cp -r .pig/branches/master/* "$branch/"
+    # rm "$branch/log" 2>/dev/null
+    
+    # find .. -name pigs-config
+    sed -Ei "s?$branch?.pig/branches/$1?g" ../pigs-config >/dev/null
+    . pigs-config
+
+
+    
+    # update working dir 
+    for file in "$branch"/*; do
+        workingfile=$(echo "$file" | cut -d'/' -f4)
+        cp "$file" "$workingfile" 2>/dev/null
+    done
+    for file in *; do
+        if [ ! -e "$branch/$file" ] ; then
+            rm "$file" 2>/dev/null
+        fi
+    done
+
+fi
+
+
+
+
+    

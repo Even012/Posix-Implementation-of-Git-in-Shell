@@ -1,0 +1,37 @@
+#! /bin/dash
+. pigs-config
+
+if [ ! -d .pig ]; then
+    echo 'pigs-add: error: pigs repository directory .pig not found' >&2
+    exit 1
+fi
+
+if [ "$#" -eq 0 ]; then 
+    echo 'usage: pigs-add <filenames>'
+    exit 1
+else
+    if [ ! -d "$branch"/index ]; then
+        mkdir "$branch"/index 
+    fi
+
+    for file in "$@"; do
+        if [ ! -e "$file" ]; then
+            if [ -e "$branch"/index/"$file" ]; then
+                rm "$branch"/index/"$file"
+            elif echo "$file" | grep '^\..*' > /dev/null ; then
+                echo "pigs-add: error: invalid filename '$file'"  >&2
+                exit 1               
+            else 
+                echo "pigs-add: error: can not open '$file'"  >&2
+                exit 1
+            fi
+        elif [ -d "$file" ]; then
+            echo "pigs-add: error: '$file' is not a regular file"  >&2
+            exit 1
+        else
+            newfile="$branch"/index/"$file"
+            cp "$file" "$newfile"
+        fi
+    done
+fi
+

@@ -1,0 +1,93 @@
+#! /bin/dash
+. pigs-config
+
+# pigs-rm [--force] [--cached] filenames...
+# the latest commit version
+i=0
+while [ -d "$branch/commit/$i" ] 2>/dev/null; do
+    i=$((i+1))
+done   
+
+
+# the file is removed both from the index and the current directory.
+if [ "$#" -eq 1 ]; then
+    if [ ! -e "$1" ] || [ ! -e "$branch/index/$1" ]; then
+        echo "$0: error: '$1' is not in the pigs repository" >&2
+        exit 1
+    fi
+
+    status1=$(diff "$branch/index/$1" "$branch/commit/$((i-1))/$1" >/dev/null 2>&1; echo "$?")
+    status2=$(diff "$branch/index/$1" "$1" >/dev/null 2>&1; echo "$?")
+
+    # file in index is different to both working file and the repo
+    if [ "$status1" -eq 1 ] && [ "$status2" -eq 1 ]; then
+        echo "$0: error: '$1' in index is different to both the working file and the repository" >&2
+        exit 1
+    fi
+
+    # if file has staged changes in the index but not committed)
+    if [ ! -e "$branch/commit/$((i-1))/$1" ] || [ "$status1" -gt 0 ]; then
+        echo "$0: error: '$1' has staged changes in the index" >&2
+        exit 1
+    fi   
+
+
+    # if file in the repo is different to the working file
+    status=$(diff "$branch/commit/$((i-1))/$1" "$1" >/dev/null; echo "$?")
+    if [ "$status" -eq 1 ]; then
+        echo "$0: error: '$1' in the repository is different to the working file" >&2
+        exit 1
+    fi
+
+    rm "$branch/index/$1"
+    rm "$1"
+fi
+
+
+# the file is removed only from the index, and not from the current directory.
+if [ "$1" = '--cached' ]; then
+
+    for file in "$@"; do
+        if [ ! "$file" = '--cached' ] && [ ! "$file" = '--forced' ]; then
+            status1=$(diff "$branch/index/$file" "$branch/commit/$((i-1))/$file" >/dev/null 2>&1; echo "$?")
+            status2=$(diff "$branch/index/$file" "$file" >/dev/null 2>&1; echo "$?")
+
+            if [ "$status1" -eq 1 ] && [ "$status2" -eq 1 ]; then
+                echo "$0: error: '$file' in index is different to both the working file and the repository" >&2
+                exit 1
+            fi
+            if [ ! -e "$branch/index/$file" ] ; then
+                echo "$0: error: '$file' is not in the pigs repository" >&2
+                exit 1
+            fi
+            rm "$branch/index/$file"
+            # if [ -e "$branch/commit/$((i-1))/$file" ]; then
+            #     rm "$branch/commit/$((i-1))/$file"
+            # fi
+        fi
+    done
+
+
+
+
+# remove the file ignoring any warnings
+elif [ "$1" = '--force' ]; then
+    if [ "$2" = '--cached' ]; then
+        if [ ! -e "$branch/index/$3" ] ; then
+            echo "$0: error: '$3' is not in the pigs repository" >&2
+            exit 1
+        fi  
+        # if [ -e "$branch/commit/$((i-1))/$3" ]; then
+        #     rm "$branch/commit/$((i-1))/$3"
+        # fi
+        rm "$branch/index/$3"
+    else
+        if [ ! -e "$branch/index/$2" ] ; then
+            echo "$0: error: '$2' is not in the pigs repository" >&2
+            exit 1
+        fi  
+        rm "$branch/index/$2"
+        rm "$2"
+    fi
+
+fi

@@ -1,0 +1,5 @@
+#! /bin/dash
+
+# default branch
+export branch='.pig/branches/master'
+export commit=2

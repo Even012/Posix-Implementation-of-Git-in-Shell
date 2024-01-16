@@ -1,0 +1,89 @@
+#! /bin/dash
+. pigs-config
+
+if [ ! -d .pig ]; then
+    echo 'pigs-commit: error: pigs repository directory .pig not found' >&2
+    exit 1
+fi
+
+if [ "$#" -eq 0 ] || [ "$#" -eq 1 ]; then 
+    echo 'usage: pigs-commit [-a] -m commit-message' >&2
+    exit 1
+elif [ "$1" = "-m" ] && [ "$2" = "" ]; then
+    echo 'usage: pigs-commit [-a] -m commit-message' >&2
+    exit 1
+elif [ "$1" = "-m" ] && [ "$#" -ge 3 ]; then
+    echo 'usage: pigs-commit [-a] -m commit-message' >&2
+    exit 1
+elif [ ! "$1" = "-m" ] && [ ! "$1" = "-a" ]; then
+    echo 'usage: pigs-commit [-a] -m commit-message' >&2
+    exit 1
+
+elif [ ! -d "$branch/index" ]; then
+    echo "nothing to commit"
+    exit 0
+elif [ "$#" -eq 2 ] || [ "$#" -eq 3 ]; then 
+
+    # create commit directory
+    if [ ! -d "$branch/commit" ]; then
+        mkdir "$branch/commit" 
+    fi
+    # increment for commit dir
+    i=0
+    while [ -d "$branch/commit/$i" ] 2>/dev/null; do
+        i=$((i+1))
+    done
+
+    # all files already in the index to have their contents from the current directory added to the index 
+    # (for the option -a)
+    if [ "$1" = "-a" ]; then
+        for arg in "$branch"/index/*; do
+            originfile=$(echo "$arg" | cut -d'/' -f5)
+            pigs-add "$originfile"
+        done
+    fi
+
+    # check if the staged files are no different from committed files
+    if [ $i -ge 1 ]; then
+        # status=$(diff "$branch/commit/$((i-1))" "$branch/index" 1>/dev/null; echo $?)
+        # if [ "$status" -eq 0 ]; then
+        #     echo "nothing to commit"
+        #     exit 0
+        # fi
+        if diff "$branch/commit/$((i-1))" "$branch/index" >/dev/null 
+        then
+            echo "nothing to commit"
+            exit 0
+        fi        
+    fi
+
+    # create a new dir with number every commit
+    mkdir "$branch/commit/$i/"
+
+    # snapshot current version
+    for file in "$branch"/index/* ; do
+        if [ ! "$file" = "$branch/index/*" ]; then       
+            originfile=$(echo "$file" | cut -d'/' -f5)
+            newfile="$branch/commit/$i/$originfile"
+            cp "$file" "$newfile"
+        fi
+    done 
+    echo "Committed as commit $i"
+    # commit=$((commit+1))
+    # sed -Ei "s?commit=[0-9]*?commit=$commit?g" ../pigs-config >/dev/null
+
+
+    # create log and save this message in log file
+    if [ ! -e "$branch/log" ]; then
+        touch "$branch/log"
+    fi
+    
+    if [ "$1" = "-a" ]; then
+        echo "$i $3" >> "$branch/log"
+    else
+        echo "$i $2" >> "$branch/log"
+    fi
+fi
+
+
+

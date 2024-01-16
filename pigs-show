@@ -1,0 +1,33 @@
+#! /bin/dash
+. pigs-config
+
+if [ ! -d .pig ]; then
+    echo 'pigs-show: error: pigs repository directory .pig not found' >&2
+    exit 1
+fi
+
+arg="$1"
+
+# 1:a
+filename=$(echo "$arg" | cut -d':' -f2)
+i=$(echo "$arg" | cut -d':' -f1)
+
+
+# :a  print the content of the index file
+if [ -z "$i" ]; then
+    if [ ! -e "$branch/index/$filename" ]; then
+        echo "pigs-show: error: '$filename' not found in index" >&2
+        exit 1
+    fi
+    cat "$branch/index/$filename"
+else
+    if [ ! -d "$branch/commit/$i" ]; then
+        echo "pigs-show: error: unknown commit '$i'" >&2
+        exit 1
+    elif [ ! -e "$branch/commit/$i/$filename" ]; then
+        echo "pigs-show: error: '$filename' not found in commit $i" >&2
+        exit 1
+    fi
+
+    cat "$branch/commit/$i/$filename"
+fi
